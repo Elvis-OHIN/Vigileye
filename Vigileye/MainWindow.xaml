@@ -4,10 +4,14 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Vigileye"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
         mc:Ignorable="d"
         Title="MainWindow" Height="600" Width="900"
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf">
+    
     <Grid>
+      
+        
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <!-- Première ligne -->
@@ -22,7 +26,6 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Exemples d'ajout de contrôles dans chaque cellule -->
         <Grid Grid.Row="0" Grid.Column="0" Background="Gray" Margin="10">
             <StackPanel>
                 <TextBlock x:Name="txtComputerName" Text="Nom de l'ordinateur" Foreground="White"/>
@@ -87,5 +90,14 @@
         <Grid Grid.Row="1" Grid.Column="2" Background="Gray" Margin="10">
             <ListBox Name="listBoxApps" HorizontalAlignment="Left" VerticalAlignment="Top" Width="auto" Height="auto"/>
         </Grid>
+
+        <tb:TaskbarIcon x:Name="notifyIcon" MenuActivation="LeftOrRightClick" IconSource="/favicon.ico" ToolTipText="Vigileye">
+            <tb:TaskbarIcon.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Ouvrir" Click="Open_Click" />
+                    <MenuItem Header="Quitter" Click="Exit_Click" />
+                </ContextMenu>
+            </tb:TaskbarIcon.ContextMenu>
+        </tb:TaskbarIcon>
     </Grid>
 </Window>

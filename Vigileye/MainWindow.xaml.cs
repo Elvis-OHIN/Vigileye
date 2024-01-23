@@ -36,7 +36,7 @@ namespace Vigileye
         private double gaugeMaxValue = 100;
         public MainWindow()
         {   
-            this.Visibility = Visibility.Hidden;
+           
             InitializeComponent();
             InitializeMemoryUpdateTimer();
             LoadSystemInfo();
@@ -44,6 +44,9 @@ namespace Vigileye
             DisplayRAMInfo();
             GetNetworkInfo();
             GetRunningApplications();
+            Closing += MainWindow_Closing;
+            Visibility = Visibility.Hidden;
+
         }
         private void InitializeMemoryUpdateTimer()
         {
@@ -52,6 +55,12 @@ namespace Vigileye
             memoryUpdateTimer.Tick += MemoryUpdateTimer_Tick;
             memoryUpdateTimer.Start();
         }
+        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            e.Cancel = true;
+            Visibility = Visibility.Hidden;
+        }
+
         private async void MemoryUpdateTimer_Tick(object sender, EventArgs e)
         {
             await Task.Run(() =>
@@ -71,7 +80,6 @@ namespace Vigileye
             txtOSInfo.Text = $"OS: {SystemInfo.GetOperatingSystemInfo()}";
             txtGPUInfo.Text = $"GPU: {SystemInfo.GetGPUName()}";
             txtMotherboardInfo.Text = $"Carte Mère: {SystemInfo.GetMotherboardInfo()}";
-            // Mettez à jour les autres TextBlock ici
         }
 
         private void ConfigureDisksComboBox()
@@ -224,8 +232,6 @@ namespace Vigileye
         {
             try
             {
-                // Tentez une opération non critique pour vérifier si vous avez accès.
-                // Par exemple, obtenez l'ID de session du processus.
                 int sessionId = process.SessionId;
                 return true;
             }
@@ -234,5 +240,21 @@ namespace Vigileye
                 return false;
             }
         }
+        private void Open_Click(object sender, RoutedEventArgs e)
+        {
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = WindowState.Normal;
+            }
+            Visibility = Visibility.Visible;
+            Activate();
+            Topmost = true;
+            Topmost = false;
+        }
+        private void Exit_Click(object sender, RoutedEventArgs e)
+        {
+            Application.Current.Shutdown();
+        }
+
     }
 }
