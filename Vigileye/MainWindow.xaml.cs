@@ -19,7 +19,15 @@ using System;
 using System.Drawing;
 using Image = System.Windows.Controls.Image;
 using System.Windows.Threading;
-
+using System.Drawing.Imaging;
+using System.Windows.Forms;
+using System.IO;
+using Microsoft.VisualBasic.Devices;
+using System.Net.Http;
+using System.Reflection.Metadata;
+using System.Net.Http.Json;
+using Microsoft.AspNetCore.SignalR.Client;
+using SynetraUtils.Models.MessageManagement;
 namespace Vigileye
 {
     /// <summary>
@@ -34,18 +42,28 @@ namespace Vigileye
 
         private double gaugeValue = 0;
         private double gaugeMaxValue = 100;
+        private bool isCapturing = false;
+        private Thread captureThread;
+        private HubConnection hubConnection;
         public MainWindow()
         {   
            
             InitializeComponent();
-            InitializeMemoryUpdateTimer();
+            /*InitializeMemoryUpdateTimer();
             LoadSystemInfo();
             ConfigureDisksComboBox();
             DisplayRAMInfo();
             GetNetworkInfo();
-            GetRunningApplications();
+            GetRunningApplications();*/
+            hubConnection = new HubConnectionBuilder()
+            .WithUrl("https://localhost:7057/sharehub") // Remplacez par l'URL de votre hub SignalR Blazor
+            .Build();
+
+            hubConnection.StartAsync().Wait();
             Closing += MainWindow_Closing;
             Visibility = Visibility.Hidden;
+            CaptureDesktopImage();
+
 
         }
         private void InitializeMemoryUpdateTimer()
@@ -69,6 +87,7 @@ namespace Vigileye
                 {
                     DisplayRAMInfo();
                     GetRunningApplications();
+                    CaptureDesktopImage();
                 });
             });
         }
@@ -169,7 +188,7 @@ namespace Vigileye
             }
             else
             {
-                MessageBox.Show("Aucune interface réseau active trouvée.");
+                System.Windows.MessageBox.Show("Aucune interface réseau active trouvée.");
             }
         }
         private void GetRunningApplications()
@@ -205,7 +224,7 @@ namespace Vigileye
                             appImage.Source = bitmapSource;
 
                             StackPanel stackPanel = new StackPanel();
-                            stackPanel.Orientation = Orientation.Horizontal;
+                            stackPanel.Orientation = System.Windows.Controls.Orientation.Horizontal;
                             stackPanel.Children.Add(appImage);
 
                             TextBlock textBlock = new TextBlock();
@@ -227,7 +246,71 @@ namespace Vigileye
                 }
             }
         }
+        private void CaptureDesktopImage()
+        {
+             isCapturing = true;
+             captureThread = new Thread(CaptureScreenContinuously);
+             captureThread.Start();
+        }
+        private void CaptureScreenContinuously()
+        {
+            while (isCapturing)
+            {
+                // Capture the screen
+                double screenWidth = SystemParameters.PrimaryScreenWidth;
+                double screenHeight = SystemParameters.PrimaryScreenHeight;
 
+                // Create a bitmap with the screen dimensions
+                Bitmap screenshot = new Bitmap((int)screenWidth, (int)screenHeight);
+
+                // Capture the screen content
+                using (Graphics g = Graphics.FromImage(screenshot))
+                {
+                    g.CopyFromScreen(new System.Drawing.Point(0, 0), System.Drawing.Point.Empty, new System.Drawing.Size((int)screenWidth, (int)screenHeight));
+                }
+
+                // Display the captured screenshot
+                this.Dispatcher.Invoke(() =>
+                {
+                    BitmapImage bitmapImage = new BitmapImage();
+                    bitmapImage.BeginInit();
+                    bitmapImage.StreamSource = new System.IO.MemoryStream(ImageToByteArray(screenshot));
+                    bitmapImage.EndInit();
+                    ImageMessage file = new ImageMessage();
+
+                    byte[] imageBytes = null;
+
+                    if (bitmapImage != null)
+                    {
+                        // Créer un encodeur JPEG
+                        JpegBitmapEncoder encoder = new JpegBitmapEncoder();
+                        encoder.Frames.Add(BitmapFrame.Create(bitmapImage));
+
+                        // Créer un MemoryStream pour stocker les données encodées
+                        using (MemoryStream memoryStream = new MemoryStream())
+                        {
+                            // Encoder l'image dans le MemoryStream
+                            encoder.Save(memoryStream);
+
+                            // Obtenir le tableau de bytes résultant
+                            imageBytes = memoryStream.ToArray();
+                        }
+                    }
+                    file.ImageBinary = imageBytes;
+                    file.ImageHeaders = "data:" + "image/png" + ";base64,";
+                    hubConnection.InvokeAsync("ImageMessage", file);
+                });
+
+                // Delay for a short period before capturing the next screen (adjust as needed)
+                Thread.Sleep(1); // Capture approximately 10 frames per second
+            }
+        }
+        private byte[] ImageToByteArray(Bitmap image)
+        {
+            System.IO.MemoryStream stream = new System.IO.MemoryStream();
+            image.Save(stream, System.Drawing.Imaging.ImageFormat.Bmp);
+            return stream.ToArray();
+        }
         private bool HasProcessAccess(Process process)
         {
             try
@@ -253,7 +336,7 @@ namespace Vigileye
         }
         private void Exit_Click(object sender, RoutedEventArgs e)
         {
-            Application.Current.Shutdown();
+            System.Windows.Application.Current.Shutdown();
         }
 
     }
