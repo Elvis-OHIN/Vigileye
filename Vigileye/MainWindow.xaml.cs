@@ -185,6 +185,7 @@ namespace Vigileye
                 subnetMaskTextBox.Text = subnetMask.ToString();
                 defaultGatewayTextBox.Text = defaultGateway.ToString();
                 dnsServersTextBox.Text = string.Join(", ", dnsServers);
+                Mac.Text = SystemInfo.ObtenirAdresseMac();
             }
             else
             {

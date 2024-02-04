@@ -7,6 +7,7 @@ using System.Management;
 using System.IO;
 using System.Diagnostics;
 using Microsoft.VisualBasic;
+using System.Net.NetworkInformation;
 
 namespace Vigileye.Models
 {
@@ -111,8 +112,20 @@ namespace Vigileye.Models
 
             return (totalMemory, freeMemory);
         }
+        public static string ObtenirAdresseMac()
+        {
+            string adresseMac = string.Empty;
 
+            foreach (NetworkInterface nic in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.NetworkInterfaceType != NetworkInterfaceType.Loopback && nic.NetworkInterfaceType != NetworkInterfaceType.Tunnel && nic.OperationalStatus == OperationalStatus.Up)
+                {
+                    adresseMac = BitConverter.ToString(nic.GetPhysicalAddress().GetAddressBytes());
+                    break; // Prendre la première adresse MAC disponible
+                }
+            }
 
-        // Vous pouvez ajouter plus de méthodes pour récupérer d'autres informations
+            return adresseMac;
+        }
     }
 }
