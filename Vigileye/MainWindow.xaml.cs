@@ -28,6 +28,8 @@ using System.Reflection.Metadata;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 using SynetraUtils.Models.MessageManagement;
+using Microsoft.Toolkit.Uwp.Notifications;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Tab;
 namespace Vigileye
 {
     /// <summary>
@@ -55,16 +57,32 @@ namespace Vigileye
             DisplayRAMInfo();
             GetNetworkInfo();
             GetRunningApplications();*/
-            hubConnection = new HubConnectionBuilder()
-            .WithUrl("https://localhost:7057/sharehub") // Remplacez par l'URL de votre hub SignalR Blazor
-            .Build();
-
-            hubConnection.StartAsync().Wait();
+            Connection();
             Closing += MainWindow_Closing;
             Visibility = Visibility.Hidden;
             CaptureDesktopImage();
+            
 
-
+        }
+        private void Connection()
+        {
+            hubConnection = new HubConnectionBuilder()
+              .WithUrl("https://localhost:7057/sharehub")
+              .Build();
+            hubConnection.On<string, string>("ReceiveMessage", (title, message) =>
+            {
+              
+                Dispatcher.Invoke(() =>
+                {
+                    new ToastContentBuilder()
+                       .AddArgument("action", "viewConversation")
+                       .AddArgument("conversationId", 9813)
+                       .AddText(title)
+                       .AddText(message)
+                       .Show();
+                });
+            });
+            hubConnection.StartAsync().Wait();
         }
         private void InitializeMemoryUpdateTimer()
         {
