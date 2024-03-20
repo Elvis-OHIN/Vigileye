@@ -1,4 +1,5 @@
-﻿using LiveCharts.Wpf;
+﻿
+using LiveCharts.Wpf;
 using LiveCharts;
 using System.Text;
 using System.Windows;
@@ -30,6 +31,9 @@ using Microsoft.AspNetCore.SignalR.Client;
 using SynetraUtils.Models.MessageManagement;
 using Microsoft.Toolkit.Uwp.Notifications;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Tab;
+using WindowsInput;
+using WindowsInput.Native;
+using Windows.Media.Protection.PlayReady;
 namespace Vigileye
 {
     /// <summary>
@@ -47,6 +51,59 @@ namespace Vigileye
         private bool isCapturing = false;
         private Thread captureThread;
         private HubConnection hubConnection;
+        Dictionary<string, VirtualKeyCode> keyMappings = new Dictionary<string, VirtualKeyCode>()
+        {
+            {"a", VirtualKeyCode.VK_A},
+            {"b", VirtualKeyCode.VK_B},
+            {"c", VirtualKeyCode.VK_C},
+            {"d", VirtualKeyCode.VK_D},
+            {"e", VirtualKeyCode.VK_E},
+            {"f", VirtualKeyCode.VK_F},
+            {"g", VirtualKeyCode.VK_G},
+            {"h", VirtualKeyCode.VK_H},
+            {"i", VirtualKeyCode.VK_I},
+            {"j", VirtualKeyCode.VK_J},
+            {"k", VirtualKeyCode.VK_K},
+            {"l", VirtualKeyCode.VK_L},
+            {"m", VirtualKeyCode.VK_M},
+            {"n", VirtualKeyCode.VK_N},
+            {"o", VirtualKeyCode.VK_O},
+            {"p", VirtualKeyCode.VK_P},
+            {"q", VirtualKeyCode.VK_Q},
+            {"r", VirtualKeyCode.VK_R},
+            {"s", VirtualKeyCode.VK_S},
+            {"t", VirtualKeyCode.VK_T},
+            {"u", VirtualKeyCode.VK_U},
+            {"v", VirtualKeyCode.VK_V},
+            {"w", VirtualKeyCode.VK_W},
+            {"x", VirtualKeyCode.VK_X},
+            {"y", VirtualKeyCode.VK_Y},
+            {"z", VirtualKeyCode.VK_Z},
+
+            {"ArrowUp", VirtualKeyCode.UP},
+            {"ArrowDown", VirtualKeyCode.DOWN},
+            {"ArrowLeft", VirtualKeyCode.LEFT},
+            {"ArrowRight", VirtualKeyCode.RIGHT},
+
+            {"Escape", VirtualKeyCode.ESCAPE},
+            {"Enter", VirtualKeyCode.RETURN},
+            {"Tab", VirtualKeyCode.TAB},
+            {"Space", VirtualKeyCode.SPACE},
+            {"Backspace", VirtualKeyCode.BACK},
+            {"Delete", VirtualKeyCode.DELETE},
+            {"Insert", VirtualKeyCode.INSERT},
+            {"Home", VirtualKeyCode.HOME},
+            {"End", VirtualKeyCode.END},
+            {"PageUp", VirtualKeyCode.PRIOR},
+            {"PageDown", VirtualKeyCode.NEXT},
+            {"LeftShift", VirtualKeyCode.LSHIFT},
+            {"RightShift", VirtualKeyCode.RSHIFT},
+            {"LeftControl", VirtualKeyCode.LCONTROL},
+            {"RightControl", VirtualKeyCode.RCONTROL},
+            {"LeftMenu", VirtualKeyCode.LMENU}, // Alt key
+            {"RightMenu", VirtualKeyCode.RMENU}, // Alt key
+            
+        };
         public MainWindow()
         {   
            
@@ -82,7 +139,63 @@ namespace Vigileye
                        .Show();
                 });
             });
+            /*hubConnection.On<double, double>("ReceiveMouseMovement", (x, y) =>
+            {
+                // Convertir x et y en coordonnées absolues si nécessaire
+                // Simuler le mouvement de la souris en WPF
+                var inputSimulator = new InputSimulator();
+                inputSimulator.Mouse.MoveMouseTo(x * 65535, y * 65535);
+            });*/
+            hubConnection.On<string>("ReceiveKeyPress", (key) =>
+            {
+                var inputSimulator = new InputSimulator();
+                var keyCode = ConvertToVirtualKeyCode(key);
+                if (keyCode != VirtualKeyCode.F19) // Assurez-vous de ne pas simuler 'NONE'
+                {
+                    inputSimulator.Keyboard.KeyPress(keyCode);
+                }
+            });
+            var inputSimulator = new InputSimulator();
             hubConnection.StartAsync().Wait();
+            var largeurServeur = Screen.PrimaryScreen.Bounds.Width;
+            var hauteurServeur = Screen.PrimaryScreen.Bounds.Height;
+
+            // Calculer les facteurs d'échelle
+            double facteurEchelleX = (double)largeurServeur / 1200;
+            double facteurEchelleY = (double)hauteurServeur / 350;
+
+            // Adapter les coordonnées
+            int xServeur = (int)(560 * facteurEchelleX);
+            int yServeur = (int)(48 * facteurEchelleY);
+
+            var xVirtual = ConvertToVirtualDesktopCoordinate(1, 1200);
+            var yVirtual = ConvertToVirtualDesktopCoordinate(1, 350);
+
+            inputSimulator.Mouse.MoveMouseToPositionOnVirtualDesktop(xVirtual, yVirtual);
+
+        
+            xVirtual = ConvertToVirtualDesktopCoordinate(1150, 1200);
+            yVirtual = ConvertToVirtualDesktopCoordinate(330, 350);
+
+            inputSimulator.Mouse.MoveMouseToPositionOnVirtualDesktop(xVirtual, yVirtual);
+        }
+        private static double ConvertToVirtualDesktopCoordinate(int pixelCoordinate, int screenSize)
+        {
+            // Le bureau virtuel de Windows a une échelle de 0 à 65535, indépendamment de la résolution de l'écran
+            return (65535.0 * pixelCoordinate) / screenSize;
+        }
+
+        public VirtualKeyCode ConvertToVirtualKeyCode(string key)
+        {
+            if (keyMappings.TryGetValue(key, out VirtualKeyCode keyCode))
+            {
+                return keyCode;
+            }
+            else
+            {
+                // Gérer le cas où la touche n'est pas trouvée, éventuellement en loggant une erreur
+                return VirtualKeyCode.F19; // NONE est un exemple, ajustez selon votre gestion d'erreur
+            }
         }
         private void InitializeMemoryUpdateTimer()
         {
