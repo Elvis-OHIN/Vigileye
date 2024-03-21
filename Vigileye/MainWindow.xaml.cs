@@ -117,16 +117,16 @@ namespace Vigileye
             Connection();
             Closing += MainWindow_Closing;
             Visibility = Visibility.Hidden;
-            CaptureDesktopImage();
+           // CaptureDesktopImage();
             
 
         }
         private void Connection()
         {
             hubConnection = new HubConnectionBuilder()
-              .WithUrl("https://localhost:7057/sharehub")
+              .WithUrl("https://95a0-92-154-57-184.ngrok-free.app/sharehub")
               .Build();
-            hubConnection.On<string, string>("ReceiveMessage", (title, message) =>
+           /* hubConnection.On<string, string>("ReceiveMessage", (title, message) =>
             {
               
                 Dispatcher.Invoke(() =>
@@ -138,14 +138,29 @@ namespace Vigileye
                        .AddText(message)
                        .Show();
                 });
-            });
-            /*hubConnection.On<double, double>("ReceiveMouseMovement", (x, y) =>
+            });*/
+            hubConnection.On<double, double>("ReceiveMouseMovement", (x, y) =>
             {
                 // Convertir x et y en coordonnées absolues si nécessaire
                 // Simuler le mouvement de la souris en WPF
                 var inputSimulator = new InputSimulator();
-                inputSimulator.Mouse.MoveMouseTo(x * 65535, y * 65535);
-            });*/
+                var largeurServeur = Screen.PrimaryScreen.Bounds.Width;
+                var hauteurServeur = Screen.PrimaryScreen.Bounds.Height;
+
+                // Calculer les facteurs d'échelle
+                double facteurEchelleX = (double)largeurServeur / 1200;
+                double facteurEchelleY = (double)hauteurServeur / 350;
+
+                // Adapter les coordonnées
+                int xServeur = (int)(x * facteurEchelleX);
+                int yServeur = (int)(y * facteurEchelleY);
+
+                var xVirtual = ConvertToVirtualDesktopCoordinate((int)x, 1200);
+                var yVirtual = ConvertToVirtualDesktopCoordinate((int)y, 350);
+
+                inputSimulator.Mouse.MoveMouseToPositionOnVirtualDesktop(xVirtual, yVirtual);
+
+            });
             hubConnection.On<string>("ReceiveKeyPress", (key) =>
             {
                 var inputSimulator = new InputSimulator();
@@ -155,29 +170,11 @@ namespace Vigileye
                     inputSimulator.Keyboard.KeyPress(keyCode);
                 }
             });
+
+    
             var inputSimulator = new InputSimulator();
             hubConnection.StartAsync().Wait();
-            var largeurServeur = Screen.PrimaryScreen.Bounds.Width;
-            var hauteurServeur = Screen.PrimaryScreen.Bounds.Height;
-
-            // Calculer les facteurs d'échelle
-            double facteurEchelleX = (double)largeurServeur / 1200;
-            double facteurEchelleY = (double)hauteurServeur / 350;
-
-            // Adapter les coordonnées
-            int xServeur = (int)(560 * facteurEchelleX);
-            int yServeur = (int)(48 * facteurEchelleY);
-
-            var xVirtual = ConvertToVirtualDesktopCoordinate(1, 1200);
-            var yVirtual = ConvertToVirtualDesktopCoordinate(1, 350);
-
-            inputSimulator.Mouse.MoveMouseToPositionOnVirtualDesktop(xVirtual, yVirtual);
-
-        
-            xVirtual = ConvertToVirtualDesktopCoordinate(1150, 1200);
-            yVirtual = ConvertToVirtualDesktopCoordinate(330, 350);
-
-            inputSimulator.Mouse.MoveMouseToPositionOnVirtualDesktop(xVirtual, yVirtual);
+            
         }
         private static double ConvertToVirtualDesktopCoordinate(int pixelCoordinate, int screenSize)
         {
