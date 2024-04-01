@@ -1,4 +1,5 @@
-﻿using LiveCharts.Wpf;
+﻿
+using LiveCharts.Wpf;
 using LiveCharts;
 using System.Text;
 using System.Windows;
@@ -30,6 +31,9 @@ using Microsoft.AspNetCore.SignalR.Client;
 using SynetraUtils.Models.MessageManagement;
 using Microsoft.Toolkit.Uwp.Notifications;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Tab;
+using WindowsInput;
+using WindowsInput.Native;
+using Windows.Media.Protection.PlayReady;
 namespace Vigileye
 {
     /// <summary>
@@ -47,6 +51,7 @@ namespace Vigileye
         private bool isCapturing = false;
         private Thread captureThread;
         private HubConnection hubConnection;
+  
         public MainWindow()
         {   
            
@@ -57,33 +62,15 @@ namespace Vigileye
             DisplayRAMInfo();
             GetNetworkInfo();
             GetRunningApplications();*/
-            Connection();
+           // Connection();
             Closing += MainWindow_Closing;
             Visibility = Visibility.Hidden;
-            CaptureDesktopImage();
+           // CaptureDesktopImage();
             
 
         }
-        private void Connection()
-        {
-            hubConnection = new HubConnectionBuilder()
-              .WithUrl("https://localhost:7057/sharehub")
-              .Build();
-            hubConnection.On<string, string>("ReceiveMessage", (title, message) =>
-            {
-              
-                Dispatcher.Invoke(() =>
-                {
-                    new ToastContentBuilder()
-                       .AddArgument("action", "viewConversation")
-                       .AddArgument("conversationId", 9813)
-                       .AddText(title)
-                       .AddText(message)
-                       .Show();
-                });
-            });
-            hubConnection.StartAsync().Wait();
-        }
+       
+
         private void InitializeMemoryUpdateTimer()
         {
             memoryUpdateTimer = new DispatcherTimer();
