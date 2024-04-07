@@ -31,7 +31,7 @@ namespace Vigileye.Services.SignalR
             string url = ((App)Application.Current).Url;
 
             hubConnection = new HubConnectionBuilder()
-                .WithUrl($"{url}/sharehub")
+                .WithUrl($"{url}/sharehub?footPrint={SystemInfo.GenerateHardwareId().Data}&key={SystemInfo.GenerateHardwareId().Key}&iv={SystemInfo.GenerateHardwareId().IV}")
                 .WithAutomaticReconnect()
                 .Build();
 

@@ -8,6 +8,10 @@ using System.IO;
 using System.Diagnostics;
 using Microsoft.VisualBasic;
 using System.Net.NetworkInformation;
+using System.Security.Cryptography;
+using SynetraUtils.Auth;
+using Org.BouncyCastle.Security;
+using SynetraUtils.Models.MessageManagement;
 
 namespace Vigileye.Models
 {
@@ -127,5 +131,64 @@ namespace Vigileye.Models
 
             return adresseMac;
         }
+        public static EncryptedData GenerateHardwareId()
+        {
+            var processorId = GetWmiDeviceProperty("Win32_Processor", "ProcessorId");
+            var diskDriveId = GetWmiDeviceProperty("Win32_DiskDrive", "SerialNumber");
+            var motherboardId = GetWmiDeviceProperty("Win32_BaseBoard", "SerialNumber");
+
+            var combinedId = $"{processorId}:{diskDriveId}:{motherboardId}";
+
+            EncryptedData encryptedData = new EncryptedData();
+           
+            using (Aes myAes = Aes.Create())
+            {
+                // Encrypt the string to an array of bytes.
+                byte[] encrypted = HardwareIdentifier.EncryptStringToBytes_Aes(combinedId, myAes.Key, myAes.IV);
+                encryptedData.Data = combinedId;
+                encryptedData.Key = Convert.ToBase64String(myAes.Key);
+                encryptedData.IV = Convert.ToBase64String(myAes.IV);
+            }
+
+            return encryptedData;
+        }
+
+        private static string GetWmiDeviceProperty(string wmiClass, string property)
+        {
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher($"SELECT {property} FROM {wmiClass}"))
+                {
+                    foreach (var obj in searcher.Get())
+                    {
+                        return obj[property]?.ToString().Trim() ?? string.Empty;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions or log them
+                Console.WriteLine($"An error occurred while querying WMI: {ex.Message}");
+            }
+
+            return string.Empty;
+        }
+
+        private static string GetHashString(string input)
+        {
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
+
+                StringBuilder builder = new StringBuilder();
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    builder.Append(bytes[i].ToString("x2"));
+                }
+
+                return builder.ToString();
+            }
+        }
+    
     }
 }
