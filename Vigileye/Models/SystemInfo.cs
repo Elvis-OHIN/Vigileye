@@ -77,7 +77,20 @@ namespace Vigileye.Models
             }
             return "Non trouvé";
         }
+        public static string GetWindowsProductId()
+        {
+            string productId = "";
+            ManagementObjectSearcher searcher =
+                new ManagementObjectSearcher("SELECT * FROM Win32_OperatingSystem");
 
+            foreach (ManagementObject obj in searcher.Get())
+            {
+                productId = obj["SerialNumber"].ToString();
+                break;
+            }
+
+            return productId;
+        }
         public static List<KeyValuePair<string, KeyValuePair<long, long>>> GetStorageInfo()
         {
             var storageInfo = new List<KeyValuePair<string, KeyValuePair<long, long>>>();

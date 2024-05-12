@@ -53,9 +53,28 @@ namespace Vigileye.Services.SignalR
                 inputSimulationService.SimulateClickPress(clic);
             });
 
+
             hubConnection.On<double, double, double , double>("ReceiveMouseMovement", (x,y,height,width) =>
             {
                 inputSimulationService.SimulateMouseMovement(x,y,height,width);
+            });
+
+            hubConnection.On<string>("ReceiveDataOfPc", clic =>
+            {
+
+                var pc = new SynetraUtils.Models.DataManagement.Computer
+                {
+                    CarteMere = SystemInfo.GetMotherboardInfo(),
+                    GPU = SystemInfo.GetGPUName(),
+                    Os = SystemInfo.GetOperatingSystemInfo(),
+                    Name = SystemInfo.GetComputerName(),
+                    IDProduct = SystemInfo.GetWindowsProductId(),
+                    FootPrint = SystemInfo.GenerateHardwareId().Data,
+                    Statut = true,
+                    IsActive = true,
+                    OperatingSystem = SystemInfo.GetSystemArchitecture()
+                };
+                hubConnection.SendAsync("SendInfoOfPc", pc);
             });
 
             hubConnection.On<string, string>("ReceiveMessage", (title, message) =>
@@ -214,7 +233,21 @@ namespace Vigileye.Services.SignalR
         {
             try
             {
+
                 await hubConnection.StartAsync();
+                var pc = new SynetraUtils.Models.DataManagement.Computer
+                {
+                    CarteMere = SystemInfo.GetMotherboardInfo(),
+                    GPU = SystemInfo.GetGPUName(),
+                    Os = SystemInfo.GetOperatingSystemInfo(),
+                    Name = SystemInfo.GetComputerName(),
+                    IDProduct = SystemInfo.GetWindowsProductId(),
+                    FootPrint = SystemInfo.GenerateHardwareId().Data,
+                    Statut = true,
+                    IsActive = true,
+                    OperatingSystem = SystemInfo.GetSystemArchitecture()
+                };
+                await hubConnection.SendAsync("SendInfoOfPc", pc);
                 await SendNetworkInfo();
                 CaptureDesktopImage();
             }
