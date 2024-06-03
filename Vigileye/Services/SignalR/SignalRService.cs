@@ -14,143 +14,204 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using Vigileye.Models;
 using Vigileye.Services.RemoteControl;
+using Vigileye.SystemManager;
 
 namespace Vigileye.Services.SignalR
 {
     public class SignalRService
     {
         private readonly HubConnection hubConnection;
-        private InputSimulationService inputSimulationService;
+        private readonly InputSimulationService inputSimulationService;
         private bool isCapturing = false;
         private Thread captureThread;
+        string url = string.Empty;
+        int parc = 0;
+        int room = 0;
 
         public SignalRService()
         {
-            string url = ((App)Application.Current).Url;
+            
+            // Récupération de l'URL du serveur SignalR depuis les paramètres de l'application
+            url = ((App)Application.Current).Url;
+                parc = ((App)Application.Current).Parc;
+                room = ((App)Application.Current).Room;
 
+            // Initialisation de la connexion HubConnection avec l'URL et les paramètres de connexion
             hubConnection = new HubConnectionBuilder()
-                .WithUrl($"{url}/sharehub?footPrint={SystemInfo.GenerateHardwareId().Data}&key={SystemInfo.GenerateHardwareId().Key}&iv={SystemInfo.GenerateHardwareId().IV}")
-                .WithAutomaticReconnect()
-                .Build();
+                    .WithUrl($"{url}/sharehub?footPrint={SystemInfo.GenerateHardwareId().Data}&key={SystemInfo.GenerateHardwareId().Key}&iv={SystemInfo.GenerateHardwareId().IV}")
+                    .WithAutomaticReconnect()
+                    .Build();
 
+            // Initialisation du service de simulation d'entrées
             inputSimulationService = new InputSimulationService();
 
+            // Configuration des gestionnaires d'événements pour la connexion Hub
             ConfigureEventHandlers();
-            
+           
         }
 
         private void ConfigureEventHandlers()
         {
-            hubConnection.On<string>("ReceiveKeyPress", key =>
+            try
             {
-                inputSimulationService.SimulateKeyPress(key);
-            });
-
-            hubConnection.On<string>("ReceiveClickPress", clic =>
-            {
-                inputSimulationService.SimulateClickPress(clic);
-            });
-
-
-            hubConnection.On<double, double, double , double>("ReceiveMouseMovement", (x,y,height,width) =>
-            {
-                inputSimulationService.SimulateMouseMovement(x,y,height,width);
-            });
-
-            hubConnection.On<string>("ReceiveDataOfPc", clic =>
-            {
-
-                var pc = new SynetraUtils.Models.DataManagement.Computer
+                // Gestion des événements de la connexion Hub
+                hubConnection.On<string>("ReceiveKeyPress", key =>
                 {
-                    CarteMere = SystemInfo.GetMotherboardInfo(),
-                    GPU = SystemInfo.GetGPUName(),
-                    Os = SystemInfo.GetOperatingSystemInfo(),
-                    Name = SystemInfo.GetComputerName(),
-                    IDProduct = SystemInfo.GetWindowsProductId(),
-                    FootPrint = SystemInfo.GenerateHardwareId().Data,
-                    Statut = true,
-                    IsActive = true,
-                    OperatingSystem = SystemInfo.GetSystemArchitecture()
-                };
-                hubConnection.SendAsync("SendInfoOfPc", pc);
-            });
-
-            hubConnection.On<string, string>("ReceiveMessage", (title, message) =>
-            {
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                   new ToastContentBuilder()
-                       .AddArgument("action", "viewConversation")
-                       .AddArgument("conversationId", 9813)
-                       .AddText(title)
-                       .AddText(message)
-                       .Show();
+                    try
+                    {
+                        inputSimulationService.SimulateKeyPress(key);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Erreur lors de la simulation de la pression de touche : {ex.Message}");
+                    }
                 });
-            });
+
+                hubConnection.On<string>("ReceiveClickPress", clic =>
+                {
+                    try
+                    {
+                        inputSimulationService.SimulateClickPress(clic);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Erreur lors de la simulation de la pression de clic : {ex.Message}");
+                    }
+                });
+
+                hubConnection.On<double, double, double, double>("ReceiveMouseMovement", (x, y, height, width) =>
+                {
+                    try
+                    {
+                        inputSimulationService.SimulateMouseMovement(x, y, height, width);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Erreur lors de la simulation du mouvement de la souris : {ex.Message}");
+                    }
+                });
+
+                hubConnection.On<string>("ReceiveDataOfPc", clic =>
+                {
+                    try
+                    {
+                        Computer computer = new Computer
+                        {
+                            CarteMere = SystemInfo.GetMotherboardInfo(),
+                            GPU = SystemInfo.GetGPUName(),
+                            Os = SystemInfo.GetOperatingSystemInfo(),
+                            Name = SystemInfo.GetComputerName(),
+                            IDProduct = SystemInfo.GetWindowsProductId(),
+                            FootPrint = SystemInfo.GenerateHardwareId().Data,
+                            ParcId = parc,
+                            RoomId = room,
+                            Statut = true,
+                            IsActive = true,
+                            OperatingSystem = SystemInfo.GetSystemArchitecture()
+                        };
+                        hubConnection.SendAsync("SendInfoOfPc", computer);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Erreur lors de l'envoi des informations du PC : {ex.Message}");
+                    }
+                });
+
+                hubConnection.On<string, string>("ReceiveMessage", (title, message) =>
+                {
+                    try
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            new ToastContentBuilder()
+                               .AddArgument("action", "viewConversation")
+                               .AddArgument("conversationId", 9813)
+                               .AddText(title)
+                               .AddText(message)
+                               .Show();
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Erreur lors de la réception du message : {ex.Message}");
+                    }
+                });
+
+                hubConnection.On<string>("ReceiveModeVeille", key =>
+                {
+                    try
+                    {
+                        PowerManager.Sleep(hibernate: false, force: false, disableWakeEvent: false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Erreur lors de l'activation du mode veille : {ex.Message}");
+                    }
+                });
+
+                hubConnection.On<string>("ReceiveModeOff", key =>
+                {
+                    try
+                    {
+                        PowerManager.Shutdown(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Erreur lors de l'arrêt du système : {ex.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la configuration des gestionnaires d'événements : {ex.Message}");
+            }
         }
 
         public async Task SendNetworkInfo()
         {
-            NetworkInfo networkInfo = new NetworkInfo();
-            
-           
-
-            NetworkInterface[] networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
-            NetworkInterface defaultInterface = null;
-            foreach (var networkInterface in networkInterfaces)
+            try
             {
-                IPInterfaceProperties properties = networkInterface.GetIPProperties();
-                // Vérifie si l'interface a des passerelles
-                if (properties.GatewayAddresses.Count > 0)
+                NetworkInfo networkInfo = new NetworkInfo();
+
+                var defaultInterface = SystemInfo.GetPrimaryNetworkInterface();
+
+                if (defaultInterface != null)
                 {
-                    defaultInterface = networkInterface;
-                    break;
+                    var unicastIPAddressInformation = defaultInterface.GetIPProperties().UnicastAddresses
+                        .FirstOrDefault(ip => ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+                    if (unicastIPAddressInformation != null)
+                    {
+                        var ipAddress = unicastIPAddressInformation.Address;
+                        var subnetMask = unicastIPAddressInformation.IPv4Mask;
+                        var defaultGateway = SystemInfo.GetBroadcastAddress(unicastIPAddressInformation.Address, unicastIPAddressInformation.IPv4Mask);
+
+                        networkInfo.FootPrint = SystemInfo.GenerateHardwareId().Data;
+                        networkInfo.IPAddress = ipAddress.ToString();
+                        networkInfo.Type = defaultInterface.Description;
+                        networkInfo.Status = defaultInterface.OperationalStatus.ToString();
+                        networkInfo.SubnetMask = subnetMask.ToString();
+                        networkInfo.DefaultGateway = defaultGateway.ToString();
+                        networkInfo.DNServers = string.Empty;
+                        networkInfo.MACAddress = defaultInterface.GetPhysicalAddress().ToString();
+                    }
                 }
 
+                if (hubConnection != null && hubConnection.State == HubConnectionState.Connected)
+                {
+                    await hubConnection.SendAsync("SendNetworkInfo", networkInfo);
+                    await Task.Delay(10000); // Délai d'exemple de 10 secondes
+                }
+                else
+                {
+                    Console.WriteLine("La connexion n'est pas établie. Arrêt de l'envoi de messages.");
+                }
             }
-
-            if (defaultInterface != null)
+            catch (Exception ex)
             {
-                // Obtenir les informations réseau
-                var networkProperties = defaultInterface.GetIPProperties();
-                var ipAddress = networkProperties.UnicastAddresses[0].Address;
-                var subnetMask = networkProperties.UnicastAddresses[0].IPv4Mask;
-                var defaultGateway = networkProperties.GatewayAddresses[0].Address;
-                var dnsServers = networkProperties.DnsAddresses;
-
-                // Afficher les informations récupérées dans des TextBox ou d'autres contrôles WPF
-                networkInfo.Id = 0;
-                networkInfo.CarteMere = SystemInfo.GetMotherboardInfo();
-                networkInfo.Type  = defaultInterface.Description;
-                networkInfo.Status = defaultInterface.OperationalStatus.ToString();
-                networkInfo.IPAddress = ipAddress.ToString();
-                networkInfo.SubnetMask = subnetMask.ToString();
-                networkInfo.DefaultGateway = defaultGateway.ToString();
-                networkInfo.DNServers = string.Join(", ", dnsServers);
-                networkInfo.MACAddress = SystemInfo.ObtenirAdresseMac();
-
-            }
-            else
-            {
-                System.Windows.MessageBox.Show("Aucune interface réseau active trouvée.");
-            }
-
-
-            if (hubConnection != null && hubConnection.State == HubConnectionState.Connected)
-            {
-                await hubConnection.SendAsync("SendNetworkInfo", networkInfo);
-
-                await Task.Delay(10000); // Délai d'exemple de 1 seconde
-
-            }
-            else
-            {
-                Console.WriteLine("La connexion n'est pas établie. Arrêt de l'envoi de messages.");
+                Console.WriteLine($"Erreur lors de l'envoi des informations réseau : {ex.Message}");
             }
         }
-        
 
         public void CaptureDesktopImage()
         {
@@ -158,24 +219,21 @@ namespace Vigileye.Services.SignalR
             captureThread = new Thread(CaptureScreenContinuously);
             captureThread.Start();
         }
+
         private void CaptureScreenContinuously()
         {
             while (isCapturing)
             {
-                // Capture the screen
                 double screenWidth = SystemParameters.PrimaryScreenWidth;
                 double screenHeight = SystemParameters.PrimaryScreenHeight;
 
-                // Create a bitmap with the screen dimensions
                 Bitmap screenshot = new Bitmap((int)screenWidth, (int)screenHeight);
 
-                // Capture the screen content
                 using (Graphics g = Graphics.FromImage(screenshot))
                 {
                     g.CopyFromScreen(new System.Drawing.Point(0, 0), System.Drawing.Point.Empty, new System.Drawing.Size((int)screenWidth, (int)screenHeight));
                 }
 
-                // Display the captured screenshot
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     BitmapImage bitmapImage = new BitmapImage();
@@ -205,7 +263,7 @@ namespace Vigileye.Services.SignalR
                     file.ImageBinary = imageBytes;
                     file.ImageHeaders = "data:" + "image/png" + ";base64,";
                     file.CarteMere = SystemInfo.GetMotherboardInfo();
-                   
+
                     if (hubConnection != null && hubConnection.State == HubConnectionState.Connected)
                     {
                         hubConnection.SendAsync("SendImageMessage", file);
@@ -216,26 +274,23 @@ namespace Vigileye.Services.SignalR
                     }
                 });
 
-                // Delay for a short period before capturing the next screen (adjust as needed)
-                Thread.Sleep(1); // Capture approximately 10 frames per second
+                Thread.Sleep(1);
             }
         }
+
         private byte[] ImageToByteArray(Bitmap image)
         {
-            System.IO.MemoryStream stream = new System.IO.MemoryStream();
+            MemoryStream stream = new MemoryStream();
             image.Save(stream, System.Drawing.Imaging.ImageFormat.Bmp);
             return stream.ToArray();
         }
-
-
 
         public async Task StartAsync()
         {
             try
             {
-
                 await hubConnection.StartAsync();
-                var pc = new SynetraUtils.Models.DataManagement.Computer
+                Computer computer = new Computer
                 {
                     CarteMere = SystemInfo.GetMotherboardInfo(),
                     GPU = SystemInfo.GetGPUName(),
@@ -243,11 +298,13 @@ namespace Vigileye.Services.SignalR
                     Name = SystemInfo.GetComputerName(),
                     IDProduct = SystemInfo.GetWindowsProductId(),
                     FootPrint = SystemInfo.GenerateHardwareId().Data,
+                    ParcId = parc,
+                    RoomId = room,
                     Statut = true,
                     IsActive = true,
                     OperatingSystem = SystemInfo.GetSystemArchitecture()
                 };
-                await hubConnection.SendAsync("SendInfoOfPc", pc);
+                await hubConnection.SendAsync("SendInfoOfPc", computer);
                 await SendNetworkInfo();
                 CaptureDesktopImage();
             }
@@ -257,4 +314,5 @@ namespace Vigileye.Services.SignalR
             }
         }
     }
+
 }
