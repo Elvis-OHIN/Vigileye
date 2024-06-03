@@ -16,54 +16,87 @@ namespace Vigileye.Services.RemoteControl
 
         public InputSimulationService()
         {
-             keyMappingService = new KeyMappingService();
+            keyMappingService = new KeyMappingService();
         }
 
+        // Simule l'appui d'une touche du clavier
         public void SimulateKeyPress(string key)
         {
-            VirtualKeyCode keyCode = keyMappingService.ConvertToVirtualKeyCode(key);
-            inputSimulator.Keyboard.KeyPress(keyCode);
+            try
+            {
+                VirtualKeyCode keyCode = keyMappingService.ConvertToVirtualKeyCode(key);
+                inputSimulator.Keyboard.KeyPress(keyCode);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la simulation de l'appui sur la touche {key} : {ex.Message}");
+            }
         }
 
+        // Simule un clic de souris
         public void SimulateClickPress(string clic)
         {
-            if (clic == "Gauche")
+            try
             {
-                inputSimulator.Mouse.LeftButtonClick();
+                if (clic == "Gauche")
+                {
+                    inputSimulator.Mouse.LeftButtonClick();
+                }
+                else if (clic == "Droit")
+                {
+                    inputSimulator.Mouse.RightButtonClick();
+                }
+                else if (clic == "Milieu")
+                {
+                    inputSimulator.Mouse.MiddleButtonClick();
+                }
             }
-            else if (clic  == "Droit")
+            catch (Exception ex)
             {
-                inputSimulator.Mouse.RightButtonClick();
-            }
-            else if (clic == "Milieu")
-            {
-                inputSimulator.Mouse.MiddleButtonClick();
+                Console.WriteLine($"Erreur lors de la simulation du clic {clic} : {ex.Message}");
             }
         }
 
-        public void SimulateMouseMovement(double x, double y , double height , double width)
+        // Simule le mouvement de la souris
+        public void SimulateMouseMovement(double x, double y, double height, double width)
         {
-            var inputSimulator = new InputSimulator();
-            var largeurServeur = Screen.PrimaryScreen.Bounds.Width;
-            var hauteurServeur = Screen.PrimaryScreen.Bounds.Height;
+            try
+            {
+                var largeurServeur = Screen.PrimaryScreen.Bounds.Width;
+                var hauteurServeur = Screen.PrimaryScreen.Bounds.Height;
 
-            // Calculer les facteurs d'échelle
-            double facteurEchelleX = (double)largeurServeur / width;
-            double facteurEchelleY = (double)hauteurServeur / height;
+                // Calculer les facteurs d'échelle
+                double facteurEchelleX = (double)largeurServeur / width;
+                double facteurEchelleY = (double)hauteurServeur / height;
 
-            // Adapter les coordonnées
-            int xServeur = (int)(x * facteurEchelleX);
-            int yServeur = (int)(y * facteurEchelleY);
+                // Adapter les coordonnées
+                int xServeur = (int)(x * facteurEchelleX);
+                int yServeur = (int)(y * facteurEchelleY);
 
-            var xVirtual = ConvertToVirtualDesktopCoordinate((int)x, 1200);
-            var yVirtual = ConvertToVirtualDesktopCoordinate((int)y, 350);
+                var xVirtual = ConvertToVirtualDesktopCoordinate(xServeur, largeurServeur);
+                var yVirtual = ConvertToVirtualDesktopCoordinate(yServeur, hauteurServeur);
 
-            inputSimulator.Mouse.MoveMouseToPositionOnVirtualDesktop(xVirtual, yVirtual);
+                inputSimulator.Mouse.MoveMouseToPositionOnVirtualDesktop(xVirtual, yVirtual);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la simulation du mouvement de la souris : {ex.Message}");
+            }
         }
+
+        // Convertit une coordonnée en pixel en une coordonnée sur le bureau virtuel de Windows
         private static double ConvertToVirtualDesktopCoordinate(int pixelCoordinate, int screenSize)
         {
-            // Le bureau virtuel de Windows a une échelle de 0 à 65535, indépendamment de la résolution de l'écran
-            return (65535.0 * pixelCoordinate) / screenSize;
+            try
+            {
+                return (65535.0 * pixelCoordinate) / screenSize;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la conversion des coordonnées : {ex.Message}");
+                return 0;
+            }
         }
     }
+
 }
