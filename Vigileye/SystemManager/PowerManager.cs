@@ -1,4 +1,5 @@
 ﻿
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -27,15 +28,7 @@ namespace Vigileye.SystemManager
         {
             try
             {
-                uint flags = EWX_SHUTDOWN | EWX_POWEROFF;
-                if (force)
-                {
-                    flags |= EWX_FORCE;
-                }
-                if (!ExitWindowsEx(flags, 0))
-                {
-                    throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-                }
+                Process.Start("shutdown", "/s /t 0");
             }
             catch (Exception ex)
             {
