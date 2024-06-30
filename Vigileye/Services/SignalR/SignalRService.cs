@@ -248,10 +248,13 @@ namespace Vigileye.Services.SignalR
                     {
                         // Créer un encodeur JPEG
                         JpegBitmapEncoder encoder = new JpegBitmapEncoder();
+                        encoder.QualityLevel = 50;
                         encoder.Frames.Add(BitmapFrame.Create(bitmapImage));
+                        
 
                         // Créer un MemoryStream pour stocker les données encodées
                         using (MemoryStream memoryStream = new MemoryStream())
+
                         {
                             // Encoder l'image dans le MemoryStream
                             encoder.Save(memoryStream);
@@ -261,7 +264,7 @@ namespace Vigileye.Services.SignalR
                         }
                     }
                     file.ImageBinary = imageBytes;
-                    file.ImageHeaders = "data:" + "image/png" + ";base64,";
+                    file.ImageHeaders = "data:image/jpeg;base64,";
                     file.CarteMere = SystemInfo.GetMotherboardInfo();
 
                     if (hubConnection != null && hubConnection.State == HubConnectionState.Connected)
